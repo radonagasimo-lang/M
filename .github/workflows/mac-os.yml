@@ -1,0 +1,26 @@
+name: Free macOS Cloud Desktop (Tailscale)
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+    - name: Download and Install Tailscale
+      run: |
+        curl -fsSL https://tailscale.com | sh
+        
+    - name: Connect GitHub Runner to Your Tailscale Network
+      env:
+        TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+      run: |
+        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud
+        
+    - name: Activate built-in macOS Screen Sharing (VNC)
+      run: |
+        sudo defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvncpasswd -vncpasswd "MacPassword123" -restart -agent -privs -all
+        
+    - name: Keep Runner Alive
+      run: |
+        echo "Connected to Tailscale! Pull up your Android app to connect."
+        sleep 21600 # Keeps the Mac running for the 6-hour limit
