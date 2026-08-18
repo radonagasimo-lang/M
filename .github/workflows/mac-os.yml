@@ -20,13 +20,16 @@ jobs:
         # Authenticate and bring the tunnel interface online
         sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
         
-    - name: Activate built-in macOS Screen Sharing (VNC)
+    - name: Configure Auto-Login and Activate Screen Sharing
       run: |
+        # Turn on Screen Sharing VNC service
         sudo defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
         sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvncpasswd -vncpasswd "MacPassword123" -restart -agent -privs -all
         
+        # Force the active session to boot the graphical layout
+        sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
+        
     - name: Keep Runner Alive
       run: |
-        echo "Connected to Tailscale successfully! Check your phone app."
+        echo "Ready for VNC connection! Tap connect on your Android app."
         sleep 21600 # Keeps the Mac running for the 6-hour limit
-        
