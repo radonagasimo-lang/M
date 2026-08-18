@@ -1,11 +1,11 @@
-name: Free macOS Cloud Desktop (VNC Fixed)
+name: Free macOS Cloud Desktop (RDP Fixed)
 on: workflow_dispatch
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
-    - name: Download and Install Tailscale via Native Shell
+    - name: Download and Install Tailscale
       run: |
         curl -fsSL https://tailscale.com | sh
         
@@ -13,24 +13,20 @@ jobs:
       env:
         TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       run: |
-        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud
+        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
         
-    - name: Force Unlock Apple Screen Sharing for Legacy VNC Connections
+    - name: Install and Run Native macOS RDP Engine
       run: |
-        # 1. Turn on the VNC server on the root console
-        sudo defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
+        # Download the precompiled macrdp binary from GitHub releases
+        curl -L -o macrdp.tar.gz https://github.com
+        tar -xzf macrdp.tar.gz
+        chmod +x macrdp
         
-        # 2. Hardcode the absolute security permissions to allow basic VNC authentication passwords
-        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-          -activate -configure -access -on \
-          -clientopts -setvncpasswd -vncpasswd "MacPassword123" \
-          -restart -agent -privs -all
-          
-        # 3. Disable Apple's strict VNC authentication requirement so standard phone apps can read it
-        sudo defaults write /Library/Preferences/com.apple.RemoteManagement SecurityConfiguration -dict VNCPasswordAuthenticationOnly -bool true
+        # Start the RDP server tracking engine with our custom password parameters
+        sudo ./macrdp --password "MacPassword123" > /dev/null 2>&1 &
+        echo "Native RDP Engine active on default port 3389!"
         
     - name: Keep Runner Alive
       run: |
-        echo "The native macOS VNC server is completely unlocked on Port 5900!"
+        echo "Connected to Tailscale! Connect using Microsoft Remote Desktop app."
         sleep 21600 # Keeps the Mac running for the 6-hour limit
-        
