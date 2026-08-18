@@ -1,33 +1,31 @@
-name: Free macOS Cloud Desktop (RDP Edition)
+name: Free macOS Cloud Desktop (RDP/VNC Edition)
 on: workflow_dispatch
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
-    - name: Clean Install Tailscale and MacRDP via Homebrew
-      run: |
-        # Use Homebrew to install the official Tailscale engine and the MacRDP utility safely
-        brew install tailscale macrdp
-        sudo tailscale --version
-        
-    - name: Connect GitHub Runner to Your Tailscale Network
-      env:
-        TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
-      run: |
-        # Boot up the local background server daemon engine
-        sudo tailscaled > /dev/null 2>&1 &
-        sleep 5
-        # Link the machine safely straight into your personal network mesh
-        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
-        
-    - name: Launch Native macOS RDP Engine
-      run: |
-        # Spin up the unblocked MacRDP server engine listening on Windows port 3389
-        sudo macrdp --password "MacPassword123" > /dev/null 2>&1 &
-        echo "Native RDP Engine is active and waiting on Port 3389!"
-        
-    - name: Keep Runner Alive
-      run: |
-        echo "Tailscale is officially live and green! Connect from your phone app."
-        sleep 21600 # Keeps the Mac running for the 6-hour limit
+      - name: Install Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          sudo tailscaled --version
+
+      - name: Connect GitHub Runner to Your Tailscale Network
+        env:
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: |
+          sudo tailscaled > /dev/null 2>&1 &
+          sleep 5
+          sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
+
+      - name: Enable Native macOS Screen Sharing (VNC)
+        run: |
+          # Enable remote management / screen sharing built into macOS
+          sudo defaults write /Library/Preferences/com.apple.AppleRemoteDesktop.server EnableVNC -bool yes
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -users admin -privs -all -restart -agent -privs -all
+          echo "VNC Server is running and accessible over your Tailscale IP on port 5900!"
+
+      - name: Keep Runner Alive
+        run: |
+          echo "Tailscale is live! Connect using any VNC viewer app on your phone."
+         sleep 21600
