@@ -5,15 +5,20 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-    - name: Download and Install Tailscale
+    - name: Install and Start Tailscale via Homebrew
       run: |
-        curl -fsSL https://tailscale.com | sh
+        brew install tailscale
+        sudo tailscale --version
         
     - name: Connect GitHub Runner to Your Tailscale Network
       env:
         TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       run: |
-        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud
+        # Launch Tailscale background daemon engine
+        sudo tailscaled > /dev/null 2>&1 &
+        sleep 5
+        # Authenticate and bring the tunnel interface online
+        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
         
     - name: Activate built-in macOS Screen Sharing (VNC)
       run: |
@@ -22,5 +27,6 @@ jobs:
         
     - name: Keep Runner Alive
       run: |
-        echo "Connected to Tailscale! Pull up your Android app to connect."
+        echo "Connected to Tailscale successfully! Check your phone app."
         sleep 21600 # Keeps the Mac running for the 6-hour limit
+        
