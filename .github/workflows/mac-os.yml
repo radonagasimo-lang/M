@@ -5,35 +5,32 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-    - name: Install Tailscale and VNC Requirements via Homebrew
+    - name: Download and Install Tailscale via Native Shell
       run: |
-        brew install tailscale tightvnc xquartz
-        sudo tailscale --version
+        curl -fsSL https://tailscale.com | sh
         
     - name: Connect GitHub Runner to Your Tailscale Network
       env:
         TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       run: |
-        sudo tailscaled > /dev/null 2>&1 &
-        sleep 5
-        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
+        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud
         
-    - name: Configure Independent TightVNC Server Engine
+    - name: Force Unlock Apple Screen Sharing for Legacy VNC Connections
       run: |
-        # Create standard VNC storage directories
-        mkdir -p ~/.vnc
+        # 1. Turn on the VNC server on the root console
+        sudo defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
         
-        # Hardcode the plaintext login password profile definition
-        # This explicitly writes the hash password for: MacPassword123
-        echo "MacPassword123" | vncpasswd -f > ~/.vnc/passwd
-        chmod 600 ~/.vnc/passwd
-        
-        # Boot up a standard display interface instance map
-        # This completely replaces the default Apple Screen Sharing layout daemon
-        vncserver :1 -geometry 1280x720 -depth 24
+        # 2. Hardcode the absolute security permissions to allow basic VNC authentication passwords
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+          -activate -configure -access -on \
+          -clientopts -setvncpasswd -vncpasswd "MacPassword123" \
+          -restart -agent -privs -all
+          
+        # 3. Disable Apple's strict VNC authentication requirement so standard phone apps can read it
+        sudo defaults write /Library/Preferences/com.apple.RemoteManagement SecurityConfiguration -dict VNCPasswordAuthenticationOnly -bool true
         
     - name: Keep Runner Alive
       run: |
-        echo "The raw TightVNC Server engine is open on Port 5901!"
+        echo "The native macOS VNC server is completely unlocked on Port 5900!"
         sleep 21600 # Keeps the Mac running for the 6-hour limit
         
