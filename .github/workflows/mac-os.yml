@@ -5,23 +5,18 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-    - name: Download and Install AnyDesk Natively
+    - name: Download and Install AnyDesk via Homebrew
       run: |
-        # Download the official AnyDesk DMG package directly
-        curl -L -o AnyDesk.dmg https://anydesk.com
-        
-        # Mount the disk image and install it to the applications folder
-        sudo hdiutil attach AnyDesk.dmg
-        sudo cp -R /Volumes/AnyDesk/AnyDesk.app /Applications/
-        sudo hdiutil detach /Volumes/AnyDesk
+        # Use Homebrew to download the verified AnyDesk application package safely
+        brew install --cask anydesk
         
     - name: Configure AnyDesk Password and Permissions
       run: |
-        # Start AnyDesk service as root administrator
+        # Start AnyDesk background service engine as root administrator
         sudo /Applications/AnyDesk.app/Contents/MacOS/AnyDesk --service &
         sleep 5
         
-        # Set your permanent login password: MacPassword123
+        # Hardcode your unattended login password profile: MacPassword123
         echo "MacPassword123" | sudo /Applications/AnyDesk.app/Contents/MacOS/AnyDesk --set-password
         
     - name: Get Your Connection ID and Keep Alive
@@ -29,8 +24,10 @@ jobs:
         echo "=================================================="
         echo "👉 YOUR ANYDESK ID IS PRINTED BELOW 👈"
         echo "=================================================="
-        # Fetch the unique 9-digit AnyDesk ID for this Mac runner
+        # Pull the unique 9-digit numeric ID assigned to this Mac server node
         /Applications/AnyDesk.app/Contents/MacOS/AnyDesk --get-id
         echo "=================================================="
         
-        # Keep the Mac running for the 6-hour limit        sleep 21600
+        # Force the worker runtime instance window to lock open for 6 hours
+        sleep 21600
+        
