@@ -36,3 +36,8 @@ jobs:
         sudo log stream --predicate 'process == "launchd"' > /dev/null 2>&1 &
         sudo nc -l 3389 | nc localhost 5900 > /dev/null 2>&1 &
         echo "Network port mapping successfully initialized!"
+        
+    - name: Keep Runner Alive
+      run: |
+        echo "The RDP server port is locked open! Pull up your Android app to connect."
+        sleep 21600 # This is the missing piece that forces it to stay active for 6 hours!
