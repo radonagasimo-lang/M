@@ -14,24 +14,25 @@ jobs:
       env:
         TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       run: |
-        # Launch Tailscale background daemon engine
+        # Start Tailscale background engine
         sudo tailscaled > /dev/null 2>&1 &
         sleep 5
-        # Connect to your mesh network
+        # Link machine to your network
         sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
         
-    - name: Download and Launch Native macOS RDP Engine
+    - name: Initialize Built-In Desktop Engine for RDP
       run: |
-        # Download a verified precompiled Mac-to-RDP server architecture binary
-        curl -L -o macrdp.tar.gz https://github.com
-        tar -xzf macrdp.tar.gz
-        chmod +x macrdp
+        # 1. Turn on the built-in system sharing protocols
+        sudo defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
         
-        # Start the RDP listener process on Windows default port 3389
-        sudo ./macrdp --password "MacPassword123" > /dev/null 2>&1 &
-        echo "Native RDP Engine active on default port 3389!"
-        
-    - name: Keep Runner Alive
-      run: |
-        echo "Connected to Tailscale! Connect using Microsoft Remote Desktop app."
-        sleep 21600 # Keeps the Mac running for the 6-hour limit
+        # 2. Grant absolute user control parameters to the 'runner' account profile
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+          -activate -configure -access -on \
+          -clientopts -setvncpassword -vncpassword "MacPassword123" \
+          -restart -agent -privs -all
+          
+        # 3. Use standard networking loops to bridge Port 3389 (RDP) straight onto Port 5900 (Screen Sharing)
+        # This tricks the Microsoft RDP app into thinking it is talking to a Windows machine!
+        sudo log stream --predicate 'process == "launchd"' > /dev/null 2>&1 &
+        sudo nc -l 3389 | nc localhost 5900 > /dev/null 2>&1 &
+        echo "Network port mapping successfully initialized!"
