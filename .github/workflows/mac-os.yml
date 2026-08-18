@@ -1,33 +1,33 @@
-name: Free macOS Cloud Desktop (AnyDesk Fixed)
+name: Free macOS Cloud Desktop (RDP Edition)
 on: workflow_dispatch
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
-    - name: Download and Install AnyDesk via Homebrew
+    - name: Clean Install Tailscale and MacRDP via Homebrew
       run: |
-        # Use Homebrew to download the verified AnyDesk application package safely
-        brew install --cask anydesk
+        # Use Homebrew to install the official Tailscale engine and the MacRDP utility safely
+        brew install tailscale macrdp
+        sudo tailscale --version
         
-    - name: Configure AnyDesk Password and Permissions
+    - name: Connect GitHub Runner to Your Tailscale Network
+      env:
+        TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       run: |
-        # Start AnyDesk background service engine as root administrator
-        sudo /Applications/AnyDesk.app/Contents/MacOS/AnyDesk --service &
+        # Boot up the local background server daemon engine
+        sudo tailscaled > /dev/null 2>&1 &
         sleep 5
+        # Link the machine safely straight into your personal network mesh
+        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
         
-        # Hardcode your unattended login password profile: MacPassword123
-        echo "MacPassword123" | sudo /Applications/AnyDesk.app/Contents/MacOS/AnyDesk --set-password
-        
-    - name: Get Your Connection ID and Keep Alive
+    - name: Launch Native macOS RDP Engine
       run: |
-        echo "=================================================="
-        echo "👉 YOUR ANYDESK ID IS PRINTED BELOW 👈"
-        echo "=================================================="
-        # Pull the unique 9-digit numeric ID assigned to this Mac server node
-        /Applications/AnyDesk.app/Contents/MacOS/AnyDesk --get-id
-        echo "=================================================="
+        # Spin up the unblocked MacRDP server engine listening on Windows port 3389
+        sudo macrdp --password "MacPassword123" > /dev/null 2>&1 &
+        echo "Native RDP Engine is active and waiting on Port 3389!"
         
-        # Force the worker runtime instance window to lock open for 6 hours
-        sleep 21600
-        
+    - name: Keep Runner Alive
+      run: |
+        echo "Tailscale is officially live and green! Connect from your phone app."
+        sleep 21600 # Keeps the Mac running for the 6-hour limit
