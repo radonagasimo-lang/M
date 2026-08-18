@@ -1,43 +1,36 @@
-name: Free macOS Cloud Desktop (RDP Edition)
+name: Free macOS Cloud Desktop (AnyDesk Fixed)
 on: workflow_dispatch
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
-    - name: Clean Install Tailscale via Homebrew
+    - name: Download and Install AnyDesk Natively
       run: |
-        brew install tailscale
-        sudo tailscale --version
+        # Download the official AnyDesk DMG package directly
+        curl -L -o AnyDesk.dmg https://anydesk.com
         
-    - name: Connect GitHub Runner to Your Tailscale Network
-      env:
-        TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        # Mount the disk image and install it to the applications folder
+        sudo hdiutil attach AnyDesk.dmg
+        sudo cp -R /Volumes/AnyDesk/AnyDesk.app /Applications/
+        sudo hdiutil detach /Volumes/AnyDesk
+        
+    - name: Configure AnyDesk Password and Permissions
       run: |
-        # Start Tailscale background engine
-        sudo tailscaled > /dev/null 2>&1 &
+        # Start AnyDesk service as root administrator
+        sudo /Applications/AnyDesk.app/Contents/MacOS/AnyDesk --service &
         sleep 5
-        # Link machine to your network
-        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
         
-    - name: Initialize Built-In Desktop Engine for RDP
+        # Set your permanent login password: MacPassword123
+        echo "MacPassword123" | sudo /Applications/AnyDesk.app/Contents/MacOS/AnyDesk --set-password
+        
+    - name: Get Your Connection ID and Keep Alive
       run: |
-        # 1. Turn on the built-in system sharing protocols
-        sudo defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
+        echo "=================================================="
+        echo "👉 YOUR ANYDESK ID IS PRINTED BELOW 👈"
+        echo "=================================================="
+        # Fetch the unique 9-digit AnyDesk ID for this Mac runner
+        /Applications/AnyDesk.app/Contents/MacOS/AnyDesk --get-id
+        echo "=================================================="
         
-        # 2. Grant absolute user control parameters to the 'runner' account profile
-        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-          -activate -configure -access -on \
-          -clientopts -setvncpassword -vncpassword "MacPassword123" \
-          -restart -agent -privs -all
-          
-        # 3. Use standard networking loops to bridge Port 3389 (RDP) straight onto Port 5900 (Screen Sharing)
-        # This tricks the Microsoft RDP app into thinking it is talking to a Windows machine!
-        sudo log stream --predicate 'process == "launchd"' > /dev/null 2>&1 &
-        sudo nc -l 3389 | nc localhost 5900 > /dev/null 2>&1 &
-        echo "Network port mapping successfully initialized!"
-        
-    - name: Keep Runner Alive
-      run: |
-        echo "The RDP server port is locked open! Pull up your Android app to connect."
-        sleep 21600 # This is the missing piece that forces it to stay active for 6 hours!
+        # Keep the Mac running for the 6-hour limit        sleep 21600
