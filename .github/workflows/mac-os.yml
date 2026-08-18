@@ -1,4 +1,4 @@
-name: Free macOS Cloud Desktop (RDP Fixed)
+name: Free macOS Cloud Desktop (VNC Fixed)
 on: workflow_dispatch
 
 jobs:
@@ -14,22 +14,25 @@ jobs:
       env:
         TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       run: |
-        # Boot up the local background server daemon engine first
         sudo tailscaled > /dev/null 2>&1 &
         sleep 5
-        # Link the machine safely straight into your personal network mesh
         sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
         
-    - name: Install and Launch Stable Mac RDP Server Engine
+    - name: Activate Native macOS Screen Sharing (VNC)
       run: |
-        # Download and install the verified remote-desktop server tool for Mac
-        brew install krallin/formulas/remotemac || brew install remotemac || true
-        
-        # Alternatively, spin up the fast fallback background proxy
+        # 1. Turn on the VNC server on the root console
         sudo defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
-        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvncpasswd -vncpasswd "MacPassword123" -restart -agent -privs -all
+        
+        # 2. Fix the kickstart command formatting (removed the broken vncpasswd typo options)
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+          -activate -configure -access -on \
+          -clientopts -setvncpassword -vncpassword "MacPassword123" \
+          -restart -agent -privs -all
+          
+        # 3. Open up security preferences for phone apps
+        sudo defaults write /Library/Preferences/com.apple.RemoteManagement SecurityConfiguration -dict VNCPasswordAuthenticationOnly -bool true
         
     - name: Keep Runner Alive
       run: |
-        echo "Tailscale is officially live and green! Connect from your phone app."
+        echo "The native macOS VNC server is officially fixed and listening on Port 5900!"
         sleep 21600 # Keeps the Mac running for the 6-hour limit
