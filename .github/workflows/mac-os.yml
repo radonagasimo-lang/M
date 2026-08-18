@@ -1,41 +1,39 @@
-name: Free macOS Cloud Desktop (Tailscale)
+name: Free macOS Cloud Desktop (VNC Fixed)
 on: workflow_dispatch
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
-    - name: Install and Start Tailscale via Homebrew
+    - name: Install Tailscale and VNC Requirements via Homebrew
       run: |
-        brew install tailscale
+        brew install tailscale tightvnc xquartz
         sudo tailscale --version
         
     - name: Connect GitHub Runner to Your Tailscale Network
       env:
         TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       run: |
-        # Launch Tailscale background daemon engine
         sudo tailscaled > /dev/null 2>&1 &
         sleep 5
-        # Authenticate and bring the tunnel interface online
         sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
         
-    - name: Activate and Configure macOS Screen Sharing for VNC
+    - name: Configure Independent TightVNC Server Engine
       run: |
-        # 1. Turn on the VNC server console setting
-        sudo defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
+        # Create standard VNC storage directories
+        mkdir -p ~/.vnc
         
-        # 2. Configure full remote control privileges specifically for the 'runner' user
-        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-          -activate -configure -access -on \
-          -users runner -privs -all \
-          -clientopts -setvncpasswd -vncpasswd "MacPassword123" \
-          -restart -agent
-          
-        # 3. Force launch the screen sharing engine
-        sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
+        # Hardcode the plaintext login password profile definition
+        # This explicitly writes the hash password for: MacPassword123
+        echo "MacPassword123" | vncpasswd -f > ~/.vnc/passwd
+        chmod 600 ~/.vnc/passwd
+        
+        # Boot up a standard display interface instance map
+        # This completely replaces the default Apple Screen Sharing layout daemon
+        vncserver :1 -geometry 1280x720 -depth 24
         
     - name: Keep Runner Alive
       run: |
-        echo "Permissions patched! Ready for your VNC connection."
+        echo "The raw TightVNC Server engine is open on Port 5901!"
         sleep 21600 # Keeps the Mac running for the 6-hour limit
+        
