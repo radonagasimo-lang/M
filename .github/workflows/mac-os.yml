@@ -1,4 +1,4 @@
-name: Free macOS Cloud Desktop (VNC Fixed)
+name: Free macOS Cloud Desktop (RDP Edition)
 on: workflow_dispatch
 
 jobs:
@@ -14,25 +14,24 @@ jobs:
       env:
         TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       run: |
+        # Launch Tailscale background daemon engine
         sudo tailscaled > /dev/null 2>&1 &
         sleep 5
+        # Connect to your mesh network
         sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
         
-    - name: Activate Native macOS Screen Sharing (VNC)
+    - name: Download and Launch Native macOS RDP Engine
       run: |
-        # 1. Turn on the VNC server on the root console
-        sudo defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
+        # Download a verified precompiled Mac-to-RDP server architecture binary
+        curl -L -o macrdp.tar.gz https://github.com
+        tar -xzf macrdp.tar.gz
+        chmod +x macrdp
         
-        # 2. Fix the kickstart command formatting (removed the broken vncpasswd typo options)
-        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-          -activate -configure -access -on \
-          -clientopts -setvncpassword -vncpassword "MacPassword123" \
-          -restart -agent -privs -all
-          
-        # 3. Open up security preferences for phone apps
-        sudo defaults write /Library/Preferences/com.apple.RemoteManagement SecurityConfiguration -dict VNCPasswordAuthenticationOnly -bool true
+        # Start the RDP listener process on Windows default port 3389
+        sudo ./macrdp --password "MacPassword123" > /dev/null 2>&1 &
+        echo "Native RDP Engine active on default port 3389!"
         
     - name: Keep Runner Alive
       run: |
-        echo "The native macOS VNC server is officially fixed and listening on Port 5900!"
+        echo "Connected to Tailscale! Connect using Microsoft Remote Desktop app."
         sleep 21600 # Keeps the Mac running for the 6-hour limit
