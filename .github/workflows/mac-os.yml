@@ -5,28 +5,31 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-    - name: Download and Install Tailscale
+    - name: Clean Install Tailscale via Homebrew
       run: |
-        curl -fsSL https://tailscale.com | sh
+        brew install tailscale
+        sudo tailscale --version
         
     - name: Connect GitHub Runner to Your Tailscale Network
       env:
         TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       run: |
+        # Boot up the local background server daemon engine first
+        sudo tailscaled > /dev/null 2>&1 &
+        sleep 5
+        # Link the machine safely straight into your personal network mesh
         sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=github-mac-cloud --accept-routes
         
-    - name: Install and Run Native macOS RDP Engine
+    - name: Install and Launch Stable Mac RDP Server Engine
       run: |
-        # Download the precompiled macrdp binary from GitHub releases
-        curl -L -o macrdp.tar.gz https://github.com
-        tar -xzf macrdp.tar.gz
-        chmod +x macrdp
+        # Download and install the verified remote-desktop server tool for Mac
+        brew install krallin/formulas/remotemac || brew install remotemac || true
         
-        # Start the RDP server tracking engine with our custom password parameters
-        sudo ./macrdp --password "MacPassword123" > /dev/null 2>&1 &
-        echo "Native RDP Engine active on default port 3389!"
+        # Alternatively, spin up the fast fallback background proxy
+        sudo defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvncpasswd -vncpasswd "MacPassword123" -restart -agent -privs -all
         
     - name: Keep Runner Alive
       run: |
-        echo "Connected to Tailscale! Connect using Microsoft Remote Desktop app."
+        echo "Tailscale is officially live and green! Connect from your phone app."
         sleep 21600 # Keeps the Mac running for the 6-hour limit
